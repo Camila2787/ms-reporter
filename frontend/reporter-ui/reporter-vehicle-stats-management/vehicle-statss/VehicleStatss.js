@@ -2,7 +2,7 @@ import React, {useRef, useEffect, useState} from 'react';
 import {FusePageCarded, FuseLoading} from '@fuse';
 import { useSelector } from 'react-redux';
 import withReducer from 'app/store/withReducer';
-import { useQuery, useSubscription } from '@apollo/react-hooks';
+import { useQuery } from '@apollo/react-hooks';
 import { 
     Card, 
     CardContent, 
@@ -18,7 +18,22 @@ import reducer from '../store/reducers';
 
 
 const SimpleBarChart = ({ data, title, color = '#1976d2' }) => {
-    const maxValue = Math.max(...Object.values(data));
+    const values = Object.values(data);
+    const maxValue = values.length > 0 ? Math.max(...values) : 1;
+    
+    // Si no hay datos, mostrar mensaje
+    if (values.length === 0 || maxValue === 0) {
+        return (
+            <Card style={{ height: '100%', margin: '12px 0' }}>
+                <CardContent style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="h6" gutterBottom>{title}</Typography>
+                    <Typography variant="body2" align="center" color="textSecondary">
+                        No hay datos disponibles
+                    </Typography>
+                </CardContent>
+            </Card>
+        );
+    }
     
     return (
         <Card style={{ height: '100%', margin: '12px 0' }}>
@@ -45,6 +60,20 @@ const SimpleBarChart = ({ data, title, color = '#1976d2' }) => {
 const SimpleDonutChart = ({ data, title, colors = ['#1976d2', '#388e3c', '#f57c00'] }) => {
     const total = Object.values(data).reduce((sum, value) => sum + value, 0);
     const entries = Object.entries(data);
+    
+    // Si no hay datos, mostrar mensaje
+    if (total === 0 || entries.length === 0) {
+        return (
+            <Card style={{ height: '100%', margin: '12px 0' }}>
+                <CardContent style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="h6" gutterBottom align="center">{title}</Typography>
+                    <Typography variant="body2" align="center" color="textSecondary">
+                        No hay datos disponibles
+                    </Typography>
+                </CardContent>
+            </Card>
+        );
+    }
     
     return (
         <Card style={{ height: '100%', margin: '12px 0' }}>
@@ -171,53 +200,36 @@ function VehicleStatss()
     const [fleetStats, setFleetStats] = useState(null);
     const [lastUpdate, setLastUpdate] = useState(null);
 
-    // Initial data load
-    const { data: initialData, loading: initialLoading, error: initialError } = useQuery(GetFleetStatistics().query, {
-        fetchPolicy: 'network-only'
+    // Data load with polling for real-time updates
+    const { data, loading, error } = useQuery(GetFleetStatistics().query, {
+        fetchPolicy: 'network-only',
+        pollInterval: 2000, // Poll every 2 seconds for real-time updates
+        onCompleted: (data) => {
+            console.log('Data received:', data);
+        },
+        onError: (error) => {
+            console.error('Query error:', error);
+        }
     });
 
-    // Real-time subscription
-    const { data: subscriptionData, loading: subscriptionLoading, error: subscriptionError } = useSubscription(
-        FleetStatisticsUpdated().query,
-        {
-            onSubscriptionData: ({ subscriptionData }) => {
-                console.log('Subscription data received:', subscriptionData);
-            },
-            onSubscriptionComplete: () => {
-                console.log('Subscription completed');
-            },
-            onError: (error) => {
-                console.error('Subscription error:', error);
-            }
-        }
-    );
-
-    // Update state when initial data loads
+    // Update state when data loads
     useEffect(() => {
-        if (initialData && initialData.GetFleetStatistics) {
-            setFleetStats(initialData.GetFleetStatistics);
-            setLastUpdate(initialData.GetFleetStatistics.lastUpdated);
+        if (data && data.getFleetStatistics) {
+            console.log('Fleet statistics updated:', data.getFleetStatistics);
+            setFleetStats(data.getFleetStatistics);
+            setLastUpdate(data.getFleetStatistics.lastUpdated);
         }
-    }, [initialData]);
-
-    // Update state when subscription data arrives
-    useEffect(() => {
-        if (subscriptionData && subscriptionData.FleetStatisticsUpdated) {
-            console.log('FleetStatisticsUpdated received:', subscriptionData.FleetStatisticsUpdated);
-            setFleetStats(subscriptionData.FleetStatisticsUpdated);
-            setLastUpdate(subscriptionData.FleetStatisticsUpdated.lastUpdated);
-        }
-    }, [subscriptionData]);
+    }, [data]);
     
     if(!user.selectedOrganization){
         return (<FuseLoading />);
     }
 
-    if (initialLoading) {
+    if (loading) {
         return <FuseLoading />;
     }
 
-    if (initialError) {
+    if (error) {
         return (
             <FusePageCarded
                 header={
@@ -228,7 +240,7 @@ function VehicleStatss()
                 content={
                     <div className="p-24">
                         <Typography color="error">
-                            Error loading fleet statistics: {initialError.message}
+                            Error loading fleet statistics: {error.message}
                         </Typography>
                     </div>
                 }
@@ -264,8 +276,8 @@ function VehicleStatss()
                     <Typography variant="h4" align="center" className="w-full sm:w-auto">Dashboard de Estadísticas de Fleet</Typography>
                     <Box display="flex" alignItems="center" className="mt-16 sm:mt-0">
                         <Chip 
-                            label={subscriptionLoading ? "Connecting..." : subscriptionError ? "Error" : "Live"} 
-                            color={subscriptionLoading ? "default" : subscriptionError ? "secondary" : "primary"}
+                            label={loading ? "Loading..." : error ? "Error" : "Live"} 
+                            color={loading ? "default" : error ? "secondary" : "primary"}
                             size="small"
                             style={{ marginRight: 8 }}
                         />
@@ -306,11 +318,11 @@ function VehicleStatss()
                         <Grid item xs={12} md={6} style={{ marginBottom: 24 }}>
                             <SimpleBarChart 
                                 data={{
-                                    "1980s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade.decade1980s) ? fleetStats.vehiclesByDecade.decade1980s : 0,
-                                    "1990s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade.decade1990s) ? fleetStats.vehiclesByDecade.decade1990s : 0,
-                                    "2000s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade.decade2000s) ? fleetStats.vehiclesByDecade.decade2000s : 0,
-                                    "2010s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade.decade2010s) ? fleetStats.vehiclesByDecade.decade2010s : 0,
-                                    "2020s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade.decade2020s) ? fleetStats.vehiclesByDecade.decade2020s : 0
+                                    "1980s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade["1980s"]) ? fleetStats.vehiclesByDecade["1980s"] : 0,
+                                    "1990s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade["1990s"]) ? fleetStats.vehiclesByDecade["1990s"] : 0,
+                                    "2000s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade["2000s"]) ? fleetStats.vehiclesByDecade["2000s"] : 0,
+                                    "2010s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade["2010s"]) ? fleetStats.vehiclesByDecade["2010s"] : 0,
+                                    "2020s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade["2020s"]) ? fleetStats.vehiclesByDecade["2020s"] : 0
                                 }} 
                                 title="Vehículos por Década"
                                 color="#9c27b0"
@@ -335,11 +347,11 @@ function VehicleStatss()
                         <CardContent>
                             <Typography variant="h6" gutterBottom>Raw Data (Debug)</Typography>
                             <Typography variant="body2" color="textSecondary" gutterBottom>
-                                Subscription Status: {subscriptionLoading ? "Loading..." : subscriptionError ? "Error" : "Connected"}
+                                Connection Status: {loading ? "Loading..." : error ? "Error" : "Connected"}
                             </Typography>
-                            {subscriptionError && (
+                            {error && (
                                 <Typography variant="body2" color="error" gutterBottom>
-                                    Error: {subscriptionError.message}
+                                    Error: {error.message}
                                 </Typography>
                             )}
                             <pre style={{ fontSize: '12px', overflow: 'auto' }}>
