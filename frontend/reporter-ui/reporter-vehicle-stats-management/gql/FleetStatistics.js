@@ -4,12 +4,26 @@ import { gql } from 'apollo-boost';
 export const GetFleetStatistics = () => ({
     query: gql`
         query GetFleetStatistics {
-            getFleetStatistics {
+            GetFleetStatistics {
                 _id
                 totalVehicles
-                vehiclesByType
-                vehiclesByDecade
-                vehiclesBySpeedClass
+                vehiclesByType {
+                    SUV
+                    PickUp
+                    Sedan
+                }
+                vehiclesByDecade {
+                    decade1980s
+                    decade1990s
+                    decade2000s
+                    decade2010s
+                    decade2020s
+                }
+                vehiclesBySpeedClass {
+                    Lento
+                    Normal
+                    Rapido
+                }
                 hpStats { 
                     min 
                     max 
@@ -28,12 +42,26 @@ export const GetFleetStatistics = () => ({
 export const FleetStatisticsUpdated = () => ({
     query: gql`
         subscription FleetStatisticsUpdated {
-            ReporterFleetStatisticsUpdated {
+            FleetStatisticsUpdated {
                 _id
                 totalVehicles
-                vehiclesByType
-                vehiclesByDecade
-                vehiclesBySpeedClass
+                vehiclesByType {
+                    SUV
+                    PickUp
+                    Sedan
+                }
+                vehiclesByDecade {
+                    decade1980s
+                    decade1990s
+                    decade2000s
+                    decade2010s
+                    decade2020s
+                }
+                vehiclesBySpeedClass {
+                    Lento
+                    Normal
+                    Rapido
+                }
                 hpStats { 
                     min 
                     max 

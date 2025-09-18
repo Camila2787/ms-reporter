@@ -214,10 +214,10 @@ function VehicleStatss()
 
     // Update state when data loads
     useEffect(() => {
-        if (data && data.getFleetStatistics) {
-            console.log('Fleet statistics updated:', data.getFleetStatistics);
-            setFleetStats(data.getFleetStatistics);
-            setLastUpdate(data.getFleetStatistics.lastUpdated);
+        if (data && data.GetFleetStatistics) {
+            console.log('Fleet statistics updated:', data.GetFleetStatistics);
+            setFleetStats(data.GetFleetStatistics);
+            setLastUpdate(data.GetFleetStatistics.lastUpdated);
         }
     }, [data]);
     
@@ -318,11 +318,11 @@ function VehicleStatss()
                         <Grid item xs={12} md={6} style={{ marginBottom: 24 }}>
                             <SimpleBarChart 
                                 data={{
-                                    "1980s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade["1980s"]) ? fleetStats.vehiclesByDecade["1980s"] : 0,
-                                    "1990s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade["1990s"]) ? fleetStats.vehiclesByDecade["1990s"] : 0,
-                                    "2000s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade["2000s"]) ? fleetStats.vehiclesByDecade["2000s"] : 0,
-                                    "2010s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade["2010s"]) ? fleetStats.vehiclesByDecade["2010s"] : 0,
-                                    "2020s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade["2020s"]) ? fleetStats.vehiclesByDecade["2020s"] : 0
+                                    "1980s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade.decade1980s) ? fleetStats.vehiclesByDecade.decade1980s : 0,
+                                    "1990s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade.decade1990s) ? fleetStats.vehiclesByDecade.decade1990s : 0,
+                                    "2000s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade.decade2000s) ? fleetStats.vehiclesByDecade.decade2000s : 0,
+                                    "2010s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade.decade2010s) ? fleetStats.vehiclesByDecade.decade2010s : 0,
+                                    "2020s": (fleetStats.vehiclesByDecade && fleetStats.vehiclesByDecade.decade2020s) ? fleetStats.vehiclesByDecade.decade2020s : 0
                                 }} 
                                 title="Vehículos por Década"
                                 color="#9c27b0"
