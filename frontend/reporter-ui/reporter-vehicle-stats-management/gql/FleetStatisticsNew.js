@@ -1,9 +1,9 @@
 import { gql } from 'apollo-boost';
 
-// Query para obtener estadísticas iniciales
+// Query para obtener estadísticas iniciales - Versión nueva
 export const GetFleetStatistics = () => ({
     query: gql`
-        query GetFleetStatisticsV2 {
+        query GetFleetStatisticsNew {
             GetFleetStatistics {
                 _id
                 totalVehicles
@@ -38,10 +38,10 @@ export const GetFleetStatistics = () => ({
     fetchPolicy: 'network-only'
 });
 
-// Subscription para actualizaciones en tiempo real
+// Subscription para actualizaciones en tiempo real - Versión nueva
 export const FleetStatisticsUpdated = () => ({
     query: gql`
-        subscription FleetStatisticsUpdatedV2 {
+        subscription FleetStatisticsUpdatedNew {
             FleetStatisticsUpdated {
                 _id
                 totalVehicles
