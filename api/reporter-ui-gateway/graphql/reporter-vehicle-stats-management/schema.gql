@@ -1,100 +1,146 @@
-# Agrega si tu proyecto no lo trae aún
-scalar JSON
-
-# --- Tipos nuevos ---
-type FleetHpStats {
-  min: Int
-  max: Int
-  sum: Int
-  count: Int
-  avg: Float
-}
-
-type FleetStatistics {
-  _id: ID!
-  totalVehicles: Int!
-  vehiclesByType: JSON
-  vehiclesByDecade: JSON
-  vehiclesBySpeedClass: JSON
-  hpStats: FleetHpStats!
-  lastUpdated: String
-}
-
-# === TU SCHEMA EXISTENTE (deja todo lo que ya tenías) ===
-
 type CommandResponse {
+  "Response code"
   code: Int
+  "Response message"
   message: String
 }
 
 type ReporterVehicleStats {
+  "VehicleStats ID"
   id: ID!
+  "name"
   name: String!
+  "organization id"
   organizationId: String!
+  "VehicleStats description"
   description: String
-  active: Boolean!
+  "VehicleStats active flag"
+  active: Boolean!  
+  "object metadata"
   metadata: ReporterVehicleStatsMetadata
 }
 
 type ReporterVehicleStatsMetadata {
-  createdBy: String
-  createdAt: BigInt
-  updatedBy: String
-  updatedAt: BigInt
+    createdBy: String
+		createdAt: BigInt
+		updatedBy: String
+		updatedAt: BigInt
 }
 
 type ReporterVehicleStatsListing {
+  "Listing"
   listing: [ReporterVehicleStats]
-  queryTotalResultCount: Int
+  "query total result count"
+  queryTotalResultCount: Int,  
 }
 
+
 input ReporterVehicleStatsFilterInput {
+  "Name"
   name: String
+  "organization id"
   organizationId: String!
+  "VehicleStats active flag"
   active: Boolean
 }
 
 input ReporterVehicleStatsPaginationInput {
+  "Page"
   page: Int!
+  "Count"
   count: Int!
+  "query total result count flag"
   queryTotalResultCount: Boolean
 }
 
 input ReporterVehicleStatsSortInput {
-  field: String!
-  asc: Boolean!
+  field: String!,
+  asc: Boolean!,
 }
 
 input ReporterVehicleStatsInput {
+  "name"
   name: String
+  "organization id"
   organizationId: String!
+  "VehicleStats description"
   description: String
+  "VehicleStats active flag"
   active: Boolean
 }
 
-# *** AQUÍ AGREGA el campo nuevo dentro del MISMO type Query ***
+type FleetStatistics {
+  "Fleet statistics document ID"
+  _id: ID!
+  "Total number of vehicles processed"
+  totalVehicles: Int!
+  "Vehicles grouped by type"
+  vehiclesByType: FleetTypeStats
+  "Vehicles grouped by decade"
+  vehiclesByDecade: FleetDecadeStats
+  "Vehicles grouped by speed class"
+  vehiclesBySpeedClass: FleetSpeedClassStats
+  "Horsepower statistics"
+  hpStats: FleetHpStats
+  "Last update timestamp"
+  lastUpdated: String!
+}
+
+type FleetTypeStats {
+  SUV: Int
+  PickUp: Int
+  Sedan: Int
+}
+
+type FleetDecadeStats {
+  decade1980s: Int
+  decade1990s: Int
+  decade2000s: Int
+  decade2010s: Int
+  decade2020s: Int
+}
+
+type FleetSpeedClassStats {
+  Lento: Int
+  Normal: Int
+  Rapido: Int
+}
+
+type FleetHpStats {
+  "Minimum horsepower"
+  min: Float!
+  "Maximum horsepower"
+  max: Float!
+  "Sum of all horsepower values"
+  sum: Float!
+  "Count of vehicles with horsepower data"
+  count: Int!
+  "Average horsepower (calculated)"
+  avg: Float!
+}
+
 type Query {
-  ReporterVehicleStatsListing(
-    filterInput: ReporterVehicleStatsFilterInput,
-    paginationInput: ReporterVehicleStatsPaginationInput,
-    sortInput: ReporterVehicleStatsSortInput
-  ): ReporterVehicleStatsListing
-
+  "Get VehicleStatss filtered "
+  ReporterVehicleStatsListing(filterInput: ReporterVehicleStatsFilterInput, paginationInput: ReporterVehicleStatsPaginationInput, sortInput: ReporterVehicleStatsSortInput): ReporterVehicleStatsListing
+  "Get VehicleStats by its id"
   ReporterVehicleStats(id: ID!, organizationId: String!): ReporterVehicleStats
-
-  # --- NUEVO ---
-  getFleetStatistics: FleetStatistics!
+  "Get real-time fleet statistics"
+  GetFleetStatistics: FleetStatistics
 }
 
 type Mutation {
+  "Create a new VehicleStats"
   ReporterCreateVehicleStats(input: ReporterVehicleStatsInput!): ReporterVehicleStats
-  ReporterUpdateVehicleStats(id: ID!, input: ReporterVehicleStatsInput!, merge: Boolean!): ReporterVehicleStats
-  ReporterDeleteVehicleStatss(ids: [ID]!): CommandResponse
+  "Update an VehicleStats"
+  ReporterUpdateVehicleStats(id: ID!, input: ReporterVehicleStatsInput!, merge: Boolean!): ReporterVehicleStats  
+  "Deletes an VehicleStats"
+  ReporterDeleteVehicleStatss(ids: [ID]!): CommandResponse  
 }
 
-type Subscription {
-  ReporterVehicleStatsModified(id: ID!): ReporterVehicleStats
 
-  # opcional, si haces push por websocket
-  ReporterFleetStatisticsUpdated: FleetStatistics!
+type Subscription {
+  "This events is triggered when a vehicleStats updated or deleted"
+  ReporterVehicleStatsModified(id: ID!): ReporterVehicleStats
+  "This event is triggered when fleet statistics are updated"
+  FleetStatisticsUpdated: FleetStatistics
 }

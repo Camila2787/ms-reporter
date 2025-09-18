@@ -45,12 +45,7 @@ class VehicleStatsCRUD {
         "reporter-uigateway.graphql.mutation.ReporterCreateVehicleStats": { fn: instance.createVehicleStats$, instance, jwtValidation: { roles: WRITE_ROLES, attributes: REQUIRED_ATTRIBUTES } },
         "reporter-uigateway.graphql.mutation.ReporterUpdateVehicleStats": { fn: instance.updateVehicleStats$, jwtValidation: { roles: WRITE_ROLES, attributes: REQUIRED_ATTRIBUTES } },
         "reporter-uigateway.graphql.mutation.ReporterDeleteVehicleStatss": { fn: instance.deleteVehicleStatss$, jwtValidation: { roles: WRITE_ROLES, attributes: REQUIRED_ATTRIBUTES } },
-        "reporter-uigateway.graphql.query.GetFleetStatistics": {
-  fn: instance.getFleetStatistics$,
-  instance,
-  jwtValidation: { roles: READ_ROLES, attributes: [] }
-},
-
+        "reporter-uigateway.graphql.query.GetFleetStatistics": { fn: instance.getFleetStatistics$, instance, jwtValidation: { roles: READ_ROLES, attributes: REQUIRED_ATTRIBUTES } },
       }
     }
   };
@@ -103,7 +98,7 @@ class VehicleStatsCRUD {
     return VehicleStatsDA.createVehicleStats$(aggregateId, input, authToken.preferred_username).pipe(
       mergeMap(aggregate => forkJoin(
         CqrsResponseHelper.buildSuccessResponse$(aggregate),
-        eventSourcing.reporterUitEvent$(instance.buildAggregateMofifiedEvent('CREATE', 'VehicleStats', aggregateId, authToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
+        eventSourcing.reporter-uitEvent$(instance.buildAggregateMofifiedEvent('CREATE', 'VehicleStats', aggregateId, authToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
         broker.send$(MATERIALIZED_VIEW_TOPIC, `ReporterVehicleStatsModified`, aggregate)
       )),
       map(([sucessResponse]) => sucessResponse),
@@ -120,7 +115,7 @@ class VehicleStatsCRUD {
     return (merge ? VehicleStatsDA.updateVehicleStats$ : VehicleStatsDA.replaceVehicleStats$)(id, input, authToken.preferred_username).pipe(
       mergeMap(aggregate => forkJoin(
         CqrsResponseHelper.buildSuccessResponse$(aggregate),
-        eventSourcing.reporterUitEvent$(instance.buildAggregateMofifiedEvent(merge ? 'UPDATE_MERGE' : 'UPDATE_REPLACE', 'VehicleStats', id, authToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
+        eventSourcing.reporter-uitEvent$(instance.buildAggregateMofifiedEvent(merge ? 'UPDATE_MERGE' : 'UPDATE_REPLACE', 'VehicleStats', id, authToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
         broker.send$(MATERIALIZED_VIEW_TOPIC, `ReporterVehicleStatsModified`, aggregate)
       )),
       map(([sucessResponse]) => sucessResponse),
@@ -137,7 +132,7 @@ class VehicleStatsCRUD {
     return forkJoin(
       VehicleStatsDA.deleteVehicleStatss$(ids),
       from(ids).pipe(
-        mergeMap(id => eventSourcing.reporterUitEvent$(instance.buildAggregateMofifiedEvent('DELETE', 'VehicleStats', id, authToken, {}), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY })),
+        mergeMap(id => eventSourcing.reporter-uitEvent$(instance.buildAggregateMofifiedEvent('DELETE', 'VehicleStats', id, authToken, {}), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY })),
         toArray()
       )
     ).pipe(
@@ -151,6 +146,17 @@ class VehicleStatsCRUD {
     );
   }
 
+  /**
+   * Gets fleet statistics
+   *
+   * @param {*} args args
+   */
+  getFleetStatistics$({ args }, authToken) {
+    return VehicleStatsDA.getFleetStatistics$().pipe(
+      mergeMap(rawResponse => CqrsResponseHelper.buildSuccessResponse$(rawResponse)),
+      catchError(err => iif(() => err.name === 'MongoTimeoutError', throwError(err), CqrsResponseHelper.handleError$(err)))
+    );
+  }
 
   /**
    * Generate an Modified event 
@@ -174,17 +180,10 @@ class VehicleStatsCRUD {
       user: authToken.preferred_username
     })
   }
-
-  getFleetStatistics$() {
-    return VehicleStatsDA.getStats$().pipe(
-      map(doc => {
-        const sum = doc.hpStats?.sum || 0;
-        const count = doc.hpStats?.count || 0;
-        const avg = count ? (sum / count) : 0;
-        const hpStats = { ...doc.hpStats, avg };
-        return { ...doc, hpStats };
-      }),
-      mergeMap(raw => CqrsResponseHelper.buildSuccessResponse$(raw))
+  getFleetStatistics$({ args }, authToken) {
+    return VehicleStatsDA.getFleetStatistics$().pipe(
+      mergeMap(rawResponse => CqrsResponseHelper.buildSuccessResponse$(rawResponse)),
+      catchError(err => iif(() => err.name === 'MongoTimeoutError', throwError(err), CqrsResponseHelper.handleError$(err)))
     );
   }
 }

@@ -6,12 +6,6 @@ const { of, Observable, defer } = require("rxjs");
 
 const { CustomError } = require("@nebulae/backend-node-tools").error;
 
-// === NUEVO: colecciones para reporter ===
-const STATS_COLL = 'fleet_statistics';
-const PROCESSED_COLL = 'processed_vehicles';
-const STATS_ID = 'real_time_fleet_stats';
-
-
 const CollectionName = 'VehicleStats';
 
 class VehicleStatsDA {
@@ -199,55 +193,175 @@ class VehicleStatsDA {
       map(({ deletedCount }) => deletedCount > 0)
     );
   }
+// ===== FLEET STATISTICS METHODS =====
 
-    // ====== NUEVO: Vista materializada (fleet_statistics) ======
-  static getStats$() {
-    const coll = mongoDB.db.collection(STATS_COLL);
-    return defer(() => coll.findOne({ _id: STATS_ID })).pipe(
-      map(doc => doc || {
-        _id: STATS_ID,
-        totalVehicles: 0,
-        vehiclesByType: { SUV: 0, PickUp: 0, Sedan: 0 },
-        vehiclesByDecade: {},
-        vehiclesBySpeedClass: { Lento: 0, Normal: 0, Rapido: 0 },
-        hpStats: { min: 999999, max: 0, sum: 0, count: 0, avg: 0 },
-        lastUpdated: new Date().toISOString()
-      })
-    );
+  /**
+   * Gets processed aids from processed_vehicles collection
+   * @param {Array} aids - Array of aids to check
+   * @returns {Observable} Observable with array of processed aids
+   */
+  static getProcessedAids$(aids) {
+    const collection = mongoDB.db.collection('processed_vehicles');
+    return defer(() => collection.find(
+      { aid: { $in: aids } },
+      { projection: { aid: 1, _id: 0 } }
+    ).toArray())
+      .pipe(
+        map(results => results.map(r => r.aid))
+      );
   }
 
-  static updateStatsBatch$({ inc, min, max }) {
-    const coll = mongoDB.db.collection(STATS_COLL);
-    return defer(() => coll.findOneAndUpdate(
-      { _id: STATS_ID },
-      {
-        $inc: inc,
-        ...(min ? { $min: min } : {}),
-        ...(max ? { $max: max } : {}),
-        $set: { lastUpdated: new Date().toISOString() }
+  /**
+   * Inserts processed aids in bulk
+   * @param {Array} aids - Array of aids to insert
+   * @returns {Observable} Observable with result
+   */
+  static insertProcessedAids$(aids) {
+    const collection = mongoDB.db.collection('processed_vehicles');
+    const documents = aids.map(aid => ({ aid, processedAt: new Date() }));
+
+    return defer(() => collection.insertMany(documents))
+      .pipe(
+        map(result => result.insertedCount)
+      );
+  }
+
+  /**
+   * Updates fleet statistics with batch data
+   * @param {Object} batchStats - Statistics from the batch
+   * @returns {Observable} Observable with updated statistics
+   */
+  static updateFleetStatistics$(batchStats) {
+    const collection = mongoDB.db.collection('fleet_statistics');
+    const update = {
+      $inc: {
+        totalVehicles: batchStats.totalVehicles
       },
-      { upsert: true, returnDocument: 'after' }
-    )).pipe(map(res => res && (res.value || res.lastErrorObject) ? res.value : null));
+      $set: {
+        lastUpdated: new Date().toISOString()
+      }
+    };
+
+    // Add type increments
+    Object.keys(batchStats.vehiclesByType).forEach(type => {
+      update.$inc[`vehiclesByType.${type}`] = batchStats.vehiclesByType[type];
+    });
+
+    // Add decade increments
+    Object.keys(batchStats.vehiclesByDecade).forEach(decade => {
+      update.$inc[`vehiclesByDecade.${decade}`] = batchStats.vehiclesByDecade[decade];
+    });
+
+    // Add speed class increments
+    Object.keys(batchStats.vehiclesBySpeedClass).forEach(speedClass => {
+      update.$inc[`vehiclesBySpeedClass.${speedClass}`] = batchStats.vehiclesBySpeedClass[speedClass];
+    });
+
+    // Add HP stats increments
+    update.$inc['hpStats.sum'] = batchStats.hpStats.sum;
+    update.$inc['hpStats.count'] = batchStats.hpStats.count;
+
+    // Add min/max operations
+    if (batchStats.hpStats.min !== Infinity) {
+      update.$min = { 'hpStats.min': batchStats.hpStats.min };
+    }
+    if (batchStats.hpStats.max !== -Infinity) {
+      update.$max = { 'hpStats.max': batchStats.hpStats.max };
+    }
+
+    return defer(() => collection.findOneAndUpdate(
+      { _id: 'real_time_fleet_stats' },
+      update,
+      { 
+        returnOriginal: false,
+        upsert: true
+      }
+    ))
+      .pipe(
+        map(result => {
+          const stats = result.value;
+          // Calculate average
+          if (stats.hpStats && stats.hpStats.count > 0) {
+            stats.hpStats.avg = stats.hpStats.sum / stats.hpStats.count;
+          }
+          
+          // Map decade keys to GraphQL-compatible names
+          if (stats.vehiclesByDecade) {
+            const mappedDecades = {};
+            Object.keys(stats.vehiclesByDecade).forEach(decade => {
+              const mappedKey = `decade${decade}`;
+              mappedDecades[mappedKey] = stats.vehiclesByDecade[decade];
+            });
+            stats.vehiclesByDecade = mappedDecades;
+          }
+          
+          return stats;
+        })
+      );
   }
 
-  // ====== NUEVO: Idempotencia (processed_vehicles) ======
-  static findExistingAids$(aidList) {
-    if (!aidList || !aidList.length) return of([]);
-    const coll = mongoDB.db.collection(PROCESSED_COLL);
-    return defer(() => coll.find({ aid: { $in: aidList } })
-      .project({ aid: 1, _id: 0 })
-      .toArray())
-      .pipe(map(rows => rows.map(r => r.aid)));
+  /**
+   * Gets current fleet statistics
+   * @returns {Observable} Observable with fleet statistics
+   */
+  static getFleetStatistics$() {
+    const collection = mongoDB.db.collection('fleet_statistics');
+    
+    return defer(() => collection.findOne({ _id: 'real_time_fleet_stats' }))
+      .pipe(
+        map(stats => {
+          if (!stats) {
+            return {
+              _id: 'real_time_fleet_stats',
+              totalVehicles: 0,
+              vehiclesByType: {},
+              vehiclesByDecade: {},
+              vehiclesBySpeedClass: {},
+              hpStats: { min: 0, max: 0, sum: 0, count: 0, avg: 0 },
+              lastUpdated: new Date().toISOString()
+            };
+          }
+          
+          // Calculate average if not present
+          if (stats.hpStats && stats.hpStats.count > 0 && !stats.hpStats.avg) {
+            stats.hpStats.avg = stats.hpStats.sum / stats.hpStats.count;
+          }
+          
+          // Map decade keys to GraphQL-compatible names
+          if (stats.vehiclesByDecade) {
+            const mappedDecades = {};
+            Object.keys(stats.vehiclesByDecade).forEach(decade => {
+              const mappedKey = `decade${decade}`;
+              mappedDecades[mappedKey] = stats.vehiclesByDecade[decade];
+            });
+            stats.vehiclesByDecade = mappedDecades;
+          }
+          
+          return stats;
+        })
+      );
   }
 
-  static insertProcessedAids$(aidList) {
-    if (!aidList || !aidList.length) return of(true);
-    const coll = mongoDB.db.collection(PROCESSED_COLL);
-    const docs = aidList.map(aid => ({ aid }));
-    return defer(() => coll.insertMany(docs, { ordered: false })).pipe(map(() => true));
+  /**
+   * Creates indexes for fleet statistics collections
+   * @returns {Observable} Observable with result
+   */
+  static createFleetStatisticsIndexes$() {
+    const processedVehiclesCollection = mongoDB.db.collection('processed_vehicles');
+    const fleetStatisticsCollection = mongoDB.db.collection('fleet_statistics');
+    
+    const indexes = [
+      // Unique index for processed_vehicles aid
+      processedVehiclesCollection.createIndex({ aid: 1 }, { unique: true }),
+      // Index for fleet_statistics document
+      fleetStatisticsCollection.createIndex({ _id: 1 })
+    ];
+
+    return defer(() => Promise.all(indexes))
+      .pipe(
+        map(results => results.length)
+      );
   }
-
-
 }
 /**
  * @returns {VehicleStatsDA}
