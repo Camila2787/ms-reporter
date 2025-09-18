@@ -98,7 +98,7 @@ class VehicleStatsCRUD {
     return VehicleStatsDA.createVehicleStats$(aggregateId, input, authToken.preferred_username).pipe(
       mergeMap(aggregate => forkJoin(
         CqrsResponseHelper.buildSuccessResponse$(aggregate),
-        eventSourcing.reporter-uitEvent$(instance.buildAggregateMofifiedEvent('CREATE', 'VehicleStats', aggregateId, authToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
+        eventSourcing.reporterUitEvent$(instance.buildAggregateMofifiedEvent('CREATE', 'VehicleStats', aggregateId, authToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
         broker.send$(MATERIALIZED_VIEW_TOPIC, `ReporterVehicleStatsModified`, aggregate)
       )),
       map(([sucessResponse]) => sucessResponse),
@@ -115,7 +115,7 @@ class VehicleStatsCRUD {
     return (merge ? VehicleStatsDA.updateVehicleStats$ : VehicleStatsDA.replaceVehicleStats$)(id, input, authToken.preferred_username).pipe(
       mergeMap(aggregate => forkJoin(
         CqrsResponseHelper.buildSuccessResponse$(aggregate),
-        eventSourcing.reporter-uitEvent$(instance.buildAggregateMofifiedEvent(merge ? 'UPDATE_MERGE' : 'UPDATE_REPLACE', 'VehicleStats', id, authToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
+        eventSourcing.reporterUitEvent$(instance.buildAggregateMofifiedEvent(merge ? 'UPDATE_MERGE' : 'UPDATE_REPLACE', 'VehicleStats', id, authToken, aggregate), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY }),
         broker.send$(MATERIALIZED_VIEW_TOPIC, `ReporterVehicleStatsModified`, aggregate)
       )),
       map(([sucessResponse]) => sucessResponse),
@@ -132,7 +132,7 @@ class VehicleStatsCRUD {
     return forkJoin(
       VehicleStatsDA.deleteVehicleStatss$(ids),
       from(ids).pipe(
-        mergeMap(id => eventSourcing.reporter-uitEvent$(instance.buildAggregateMofifiedEvent('DELETE', 'VehicleStats', id, authToken, {}), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY })),
+        mergeMap(id => eventSourcing.reporterUitEvent$(instance.buildAggregateMofifiedEvent('DELETE', 'VehicleStats', id, authToken, {}), { autoAcknowledgeKey: process.env.MICROBACKEND_KEY })),
         toArray()
       )
     ).pipe(
@@ -179,12 +179,6 @@ class VehicleStatsCRUD {
       },
       user: authToken.preferred_username
     })
-  }
-  getFleetStatistics$({ args }, authToken) {
-    return VehicleStatsDA.getFleetStatistics$().pipe(
-      mergeMap(rawResponse => CqrsResponseHelper.buildSuccessResponse$(rawResponse)),
-      catchError(err => iif(() => err.name === 'MongoTimeoutError', throwError(err), CqrsResponseHelper.handleError$(err)))
-    );
   }
 }
 
