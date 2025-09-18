@@ -6,6 +6,12 @@ const { of, Observable, defer } = require("rxjs");
 
 const { CustomError } = require("@nebulae/backend-node-tools").error;
 
+// === NUEVO: colecciones para reporter ===
+const STATS_COLL = 'fleet_statistics';
+const PROCESSED_COLL = 'processed_vehicles';
+const STATS_ID = 'real_time_fleet_stats';
+
+
 const CollectionName = 'VehicleStats';
 
 class VehicleStatsDA {
@@ -193,6 +199,54 @@ class VehicleStatsDA {
       map(({ deletedCount }) => deletedCount > 0)
     );
   }
+
+    // ====== NUEVO: Vista materializada (fleet_statistics) ======
+  static getStats$() {
+    const coll = mongoDB.db.collection(STATS_COLL);
+    return defer(() => coll.findOne({ _id: STATS_ID })).pipe(
+      map(doc => doc || {
+        _id: STATS_ID,
+        totalVehicles: 0,
+        vehiclesByType: { SUV: 0, PickUp: 0, Sedan: 0 },
+        vehiclesByDecade: {},
+        vehiclesBySpeedClass: { Lento: 0, Normal: 0, Rapido: 0 },
+        hpStats: { min: 999999, max: 0, sum: 0, count: 0, avg: 0 },
+        lastUpdated: new Date().toISOString()
+      })
+    );
+  }
+
+  static updateStatsBatch$({ inc, min, max }) {
+    const coll = mongoDB.db.collection(STATS_COLL);
+    return defer(() => coll.findOneAndUpdate(
+      { _id: STATS_ID },
+      {
+        $inc: inc,
+        ...(min ? { $min: min } : {}),
+        ...(max ? { $max: max } : {}),
+        $set: { lastUpdated: new Date().toISOString() }
+      },
+      { upsert: true, returnDocument: 'after' }
+    )).pipe(map(res => res && (res.value || res.lastErrorObject) ? res.value : null));
+  }
+
+  // ====== NUEVO: Idempotencia (processed_vehicles) ======
+  static findExistingAids$(aidList) {
+    if (!aidList || !aidList.length) return of([]);
+    const coll = mongoDB.db.collection(PROCESSED_COLL);
+    return defer(() => coll.find({ aid: { $in: aidList } })
+      .project({ aid: 1, _id: 0 })
+      .toArray())
+      .pipe(map(rows => rows.map(r => r.aid)));
+  }
+
+  static insertProcessedAids$(aidList) {
+    if (!aidList || !aidList.length) return of(true);
+    const coll = mongoDB.db.collection(PROCESSED_COLL);
+    const docs = aidList.map(aid => ({ aid }));
+    return defer(() => coll.insertMany(docs, { ordered: false })).pipe(map(() => true));
+  }
+
 
 }
 /**

@@ -67,3 +67,33 @@ export const onReporterVehicleStatsModified = (variables) => ([
     }`,
     { variables }
 ])
+
+// Query: estado inicial del dashboard
+export const GET_FLEET_STATISTICS = gql`
+  query GetFleetStatistics {
+    getFleetStatistics {
+      _id
+      totalVehicles
+      vehiclesByType
+      vehiclesByDecade
+      vehiclesBySpeedClass
+      hpStats { min max sum count avg }
+      lastUpdated
+    }
+  }
+`;
+
+// Subscription: push del backend cada ~1s
+export const ON_FLEET_STATS_UPDATED = gql`
+  subscription OnFleetStats {
+    ReporterFleetStatisticsUpdated {
+      _id
+      totalVehicles
+      vehiclesByType
+      vehiclesByDecade
+      vehiclesBySpeedClass
+      hpStats { min max sum count avg }
+      lastUpdated
+    }
+  }
+`;

@@ -2,6 +2,7 @@ export default {
   navigation: {
     'settings': 'Configuraciones',
     'reporter-vehicle-stats-management': 'VehicleStatss',
+    'reporter-vehicle-stats-dashboard': 'Dashboard de Flota'
   },
   vehicle_statss: {
     vehicle_statss: 'VehicleStatss',
@@ -49,5 +50,42 @@ export default {
         required: "El nombre es requerido",
       }
     },
-  }
+  },
+
+  vehicle_stats_dashboard: {
+    title: 'Dashboard de Análisis de Flota',
+    vehicles_by_type: 'Vehículos por Tipo',
+    vehicles_by_decade: 'Vehículos por Década',
+    speed_class: 'Clasificación por Velocidad',
+    hp_stats: 'Potencia (HP)',
+
+    // Tarjetas / KPIs
+    total_vehicles: 'Total de Vehículos',
+    last_updated: 'Última actualización',
+
+    // Leyendas / etiquetas
+    type_SUV: 'SUV',
+    type_PickUp: 'PickUp',
+    type_Sedan: 'Sedán',
+
+    decade_1980s: '1980s',
+    decade_1990s: '1990s',
+    decade_2000s: '2000s',
+    decade_2010s: '2010s',
+    decade_2020s: '2020s',
+
+    speed_Lento: 'Lento (<140 km/h)',
+    speed_Normal: 'Normal (140–240 km/h)',
+    speed_Rapido: 'Rápido (>240 km/h)',
+
+    hp_min: 'Mínimo',
+    hp_max: 'Máximo',
+    hp_avg: 'Promedio',
+
+    // Estados UI
+    loading: 'Cargando estadísticas...',
+    empty: 'Sin datos aún',
+    error: 'No se pudieron cargar las estadísticas',
+    refresh: 'Actualizar',
+  },
 };

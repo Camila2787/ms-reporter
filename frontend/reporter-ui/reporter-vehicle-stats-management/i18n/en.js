@@ -2,6 +2,7 @@ export default {
   navigation: {
     'settings': 'Settings',
     'reporter-vehicle-stats-management': 'VehicleStatss',
+    'reporter-vehicle-stats-dashboard': 'Dashboard de Flota'
   },
   vehicle_statss: {
     vehicle_statss: 'VehicleStatss',

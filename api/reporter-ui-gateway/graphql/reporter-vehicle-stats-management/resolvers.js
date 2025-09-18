@@ -43,119 +43,69 @@ function getResponseFromBackEnd$(response) {
  * @param {string} methodName method name
  * @param {number} timeout timeout for query or mutation in milliseconds
  */
-function sendToBackEndHandler$(root, OperationArguments, context, requiredRoles, operationType, aggregateName, methodName, timeout = 2000) {
-    return RoleValidator.checkPermissions$(
-        context.authToken.realm_access.roles,
-        CONTEXT_NAME,
-        methodName,
-        PERMISSION_DENIED_ERROR_CODE,
-        "Permission denied",
-        requiredRoles
-    )
-        .pipe(
-            mergeMap(() =>
-                broker.forwardAndGetReply$(
-                    aggregateName,
-                    `reporter-uigateway.graphql.${operationType}.${methodName}`,
-                    { root, args: OperationArguments, jwt: context.encodedToken },
-                    timeout
-                )
-            ),
-            catchError(err => handleError$(err, methodName)),
-            mergeMap(response => getResponseFromBackEnd$(response))
-        )
+function sendToBackEndHandler$(root, args, context, operationType, aggregate, methodName, timeout=2000) {
+  return RoleValidator.checkPermissions$(
+    (context.authToken && context.authToken.realm_access ? context.authToken.realm_access.roles : []),
+    CONTEXT_NAME, methodName, 2, "Permission denied", READ_ROLES
+  ).pipe(
+    mergeMap(() => broker.forwardAndGetReply$(
+      aggregate,
+      `reporter-uigateway.graphql.${operationType}.${methodName}`,
+      { root, args, jwt: context.encodedToken },
+      timeout
+    )),
+    catchError(err => handleError$(err, methodName)),
+    mergeMap(res => getResponseFromBackEnd$(res))
+  );
 }
 
+function getResponseFromBackEnd$(response) {
+  return of(response).pipe(
+    map(resp => {
+      if (resp.result.code !== 200) {
+        const err = new Error(typeof resp.result.error === 'string'
+          ? resp.result.error
+          : JSON.stringify(resp.result.error || resp.result)
+        );
+        throw err;
+      }
+      return resp.data;
+    })
+  );
+}
 
 module.exports = {
-
-    //// QUERY ///////
-    Query: {
-        ReporterVehicleStatsListing(root, args, context) {
-            return sendToBackEndHandler$(root, args, context, READ_ROLES, 'query', 'VehicleStats', 'ReporterVehicleStatsListing').toPromise();
-        },
-        ReporterVehicleStats(root, args, context) {
-            return sendToBackEndHandler$(root, args, context, READ_ROLES, 'query', 'VehicleStats', 'ReporterVehicleStats').toPromise();
-        }
-    },
-
-    //// MUTATIONS ///////
-    Mutation: {
-        ReporterCreateVehicleStats(root, args, context) {
-            return sendToBackEndHandler$(root, args, context, WRITE_ROLES, 'mutation', 'VehicleStats', 'ReporterCreateVehicleStats').toPromise();
-        },
-        ReporterUpdateVehicleStats(root, args, context) {
-            return sendToBackEndHandler$(root, args, context, WRITE_ROLES, 'mutation', 'VehicleStats', 'ReporterUpdateVehicleStats').toPromise();
-        },
-        ReporterDeleteVehicleStatss(root, args, context) {
-            return sendToBackEndHandler$(root, args, context, WRITE_ROLES, 'mutation', 'VehicleStats', 'ReporterDeleteVehicleStatss').toPromise();
-        },
-    },
-
-    //// SUBSCRIPTIONS ///////
-    Subscription: {
-        ReporterVehicleStatsModified: {
-            subscribe: withFilter(
-                (payload, variables, context, info) => {
-                    //Checks the roles of the user, if the user does not have at least one of the required roles, an error will be thrown
-                    RoleValidator.checkAndThrowError(
-                        context.authToken.realm_access.roles,
-                        READ_ROLES,
-                        "Reporter",
-                        "ReporterVehicleStatsModified",
-                        PERMISSION_DENIED_ERROR_CODE,
-                        "Permission denied"
-                    );
-                    return pubsub.asyncIterator("ReporterVehicleStatsModified");
-                },
-                (payload, variables, context, info) => {
-                    return payload
-                        ? (payload.ReporterVehicleStatsModified.id === variables.id) || (variables.id === "ANY")
-                        : false;
-                }
-            )
-        }
+  Query: {
+    // backend expondrá este método CQRS (lo agregamos abajo)
+    getFleetStatistics(root, args, context) {
+      return sendToBackEndHandler$(root, args, context, 'query', 'VehicleStats', 'GetFleetStatistics').toPromise();
     }
+  },
+
+  Subscription: {
+    ReporterFleetStatisticsUpdated: {
+      subscribe: () => pubsub.asyncIterator('ReporterFleetStatisticsUpdated')
+    }
+  }
 };
 
-
-//// SUBSCRIPTIONS SOURCES ////
-
+// Bridge: escucha el tópico de MV del backend y empuja al GQL subscription
 const eventDescriptors = [
-    {
-        backendEventName: "ReporterVehicleStatsModified",
-        gqlSubscriptionName: "ReporterVehicleStatsModified",
-        dataExtractor: evt => evt.data, // OPTIONAL, only use if needed
-        onError: (error, descriptor) =>
-            console.log(`Error processing ${descriptor.backendEventName}`), // OPTIONAL, only use if needed
-        onEvent: (evt, descriptor) =>
-            console.log(`Event of type  ${descriptor.backendEventName} arrived`) // OPTIONAL, only use if needed
-    }
+  {
+    backendEventName: "ReporterFleetStatisticsUpdated",  // <- nombre del evento del backend
+    gqlSubscriptionName: "ReporterFleetStatisticsUpdated",
+    dataExtractor: evt => evt.data
+  }
 ];
 
-/**
- * Connects every backend event to the right GQL subscription
- */
 eventDescriptors.forEach(descriptor => {
-    broker.getMaterializedViewsUpdates$([descriptor.backendEventName]).subscribe(
-        evt => {
-            if (descriptor.onEvent) {
-                descriptor.onEvent(evt, descriptor);
-            }
-            const payload = {};
-            payload[descriptor.gqlSubscriptionName] = descriptor.dataExtractor
-                ? descriptor.dataExtractor(evt)
-                : evt.data;
-            pubsub.publish(descriptor.gqlSubscriptionName, payload);
-        },
-
-        error => {
-            if (descriptor.onError) {
-                descriptor.onError(error, descriptor);
-            }
-            console.error(`Error listening ${descriptor.gqlSubscriptionName}`, error);
-        },
-
-        () => console.log(`${descriptor.gqlSubscriptionName} listener STOPED.`)
-    );
+  broker.getMaterializedViewsUpdates$([descriptor.backendEventName]).subscribe(
+    evt => {
+      const payload = {};
+      payload[descriptor.gqlSubscriptionName] = descriptor.dataExtractor ? descriptor.dataExtractor(evt) : evt.data;
+      pubsub.publish(descriptor.gqlSubscriptionName, payload);
+    },
+    error => console.error(`Error listening ${descriptor.gqlSubscriptionName}`, error),
+    () => console.log(`${descriptor.gqlSubscriptionName} listener STOPPED`)
+  );
 });

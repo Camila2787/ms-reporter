@@ -45,6 +45,12 @@ class VehicleStatsCRUD {
         "reporter-uigateway.graphql.mutation.ReporterCreateVehicleStats": { fn: instance.createVehicleStats$, instance, jwtValidation: { roles: WRITE_ROLES, attributes: REQUIRED_ATTRIBUTES } },
         "reporter-uigateway.graphql.mutation.ReporterUpdateVehicleStats": { fn: instance.updateVehicleStats$, jwtValidation: { roles: WRITE_ROLES, attributes: REQUIRED_ATTRIBUTES } },
         "reporter-uigateway.graphql.mutation.ReporterDeleteVehicleStatss": { fn: instance.deleteVehicleStatss$, jwtValidation: { roles: WRITE_ROLES, attributes: REQUIRED_ATTRIBUTES } },
+        "reporter-uigateway.graphql.query.GetFleetStatistics": {
+  fn: instance.getFleetStatistics$,
+  instance,
+  jwtValidation: { roles: READ_ROLES, attributes: [] }
+},
+
       }
     }
   };
@@ -168,6 +174,19 @@ class VehicleStatsCRUD {
       user: authToken.preferred_username
     })
   }
+
+  getFleetStatistics$() {
+  return StatsDA.getStats$().pipe(
+    map(doc => {
+      const sum = doc.hpStats?.sum || 0;
+      const count = doc.hpStats?.count || 0;
+      const avg = count ? (sum / count) : 0;
+      const hpStats = { ...doc.hpStats, avg };
+      return { ...doc, hpStats };
+    }),
+    mergeMap(raw => CqrsResponseHelper.buildSuccessResponse$(raw))
+  );
+}
 }
 
 /**

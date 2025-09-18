@@ -26,12 +26,15 @@ class VehicleStatsES {
      */
     generateEventProcessorMap() {
         return {
-            'VehicleStats': {
-                "VehicleStatsModified": { fn: instance.handleVehicleStatsModified$, instance, processOnlyOnSync: true },
+             Vehicle: {
+                fn: instance.handleVehicleStatsModified$,
+                instance,
+                processOnlyOnSync: false
             }
         }
     };
 
+     
     /**
      * Using the VehicleStatsModified events restores the MaterializedView
      * This is just a recovery strategy
