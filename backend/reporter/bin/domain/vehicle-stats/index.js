@@ -17,20 +17,30 @@ const MV_TOPIC = "reporter-ui-gateway-materialized-view-updates";
 const decadeOf = (year) => `${Math.floor(year / 10) * 10}s`;
 const speedClass = (topSpeed) => topSpeed < 140 ? 'Lento' : (topSpeed > 240 ? 'Rapido' : 'Normal');
 
-// ---- Opción A: MQTT listener directo (recomendado) ----
-// Llama a esta función en start$ si vas por MQTT
+// ---- MQTT listener directo ----
 function startMqttListener(mqttUrl = process.env.MQTT_URL, topic = process.env.MQTT_TOPIC_GENERATED || 'fleet/vehicles/generated') {
-  // Si tu brokerFactory tiene listener, úsalo. Si no, puedes implementar con 'mqtt' lib.
   if (!mqttUrl) {
     ConsoleLogger.w('[reporter] MQTT_URL no definido; saltando listener MQTT');
     return of(true);
   }
+  
   ConsoleLogger.i(`[reporter] Subscribing MQTT ${mqttUrl} -> ${topic}`);
-  // Usa tu implementación real. Ejemplo genérico:
-  // broker.getMessageListener$(topic).subscribe(msg => events$.next(JSON.parse(msg)));
-  // Si no tienes ese método, sustituye por tu listener real.
+  
+  // Suscribirse al tópico MQTT y emitir eventos al Subject
+  broker.getMessageListener$(topic).subscribe(
+    msg => {
+      try {
+        const event = JSON.parse(msg);
+        ConsoleLogger.i(`[reporter] Received MQTT event: ${event.aid}`);
+        events$.next(event);
+      } catch (err) {
+        ConsoleLogger.e('[reporter] Error parsing MQTT message:', err);
+      }
+    },
+    err => ConsoleLogger.e('[reporter] MQTT subscription error:', err)
+  );
 
-  return of(true); // evita romper start$ si aún no conectas aquí
+  return of(true);
 }
 
 // ---- Opción B: puente Event Store (si tus eventos vienen del ES) ----

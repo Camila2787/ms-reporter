@@ -76,13 +76,43 @@ function getResponseFromBackEnd$(response) {
 
 module.exports = {
   Query: {
-    // backend expondrá este método CQRS (lo agregamos abajo)
+    ReporterVehicleStatsListing(root, args, context) {
+      return sendToBackEndHandler$(root, args, context, 'query', 'VehicleStats', 'ReporterVehicleStatsListing').toPromise();
+    },
+
+    ReporterVehicleStats(root, args, context) {
+      return sendToBackEndHandler$(root, args, context, 'query', 'VehicleStats', 'ReporterVehicleStats').toPromise();
+    },
+
     getFleetStatistics(root, args, context) {
       return sendToBackEndHandler$(root, args, context, 'query', 'VehicleStats', 'GetFleetStatistics').toPromise();
     }
   },
 
+  Mutation: {
+    ReporterCreateVehicleStats(root, args, context) {
+      return sendToBackEndHandler$(root, args, context, 'mutation', 'VehicleStats', 'ReporterCreateVehicleStats').toPromise();
+    },
+
+    ReporterUpdateVehicleStats(root, args, context) {
+      return sendToBackEndHandler$(root, args, context, 'mutation', 'VehicleStats', 'ReporterUpdateVehicleStats').toPromise();
+    },
+
+    ReporterDeleteVehicleStatss(root, args, context) {
+      return sendToBackEndHandler$(root, args, context, 'mutation', 'VehicleStats', 'ReporterDeleteVehicleStatss').toPromise();
+    }
+  },
+
   Subscription: {
+    ReporterVehicleStatsModified: {
+      subscribe: withFilter(
+        () => pubsub.asyncIterator('ReporterVehicleStatsModified'),
+        (payload, variables) => {
+          return payload.ReporterVehicleStatsModified.id === variables.id;
+        }
+      )
+    },
+
     ReporterFleetStatisticsUpdated: {
       subscribe: () => pubsub.asyncIterator('ReporterFleetStatisticsUpdated')
     }
