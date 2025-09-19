@@ -79,7 +79,7 @@ module.exports = {
         },
         GetFleetStatistics(root, args, context) {
             console.log('EMI Gateway: GetFleetStatistics called with args:', JSON.stringify(args));
-            console.log('EMI Gateway: GetFleetStatistics context:', JSON.stringify(context));
+            console.log('EMI Gateway: GetFleetStatistics context keys:', Object.keys(context));
             return sendToBackEndHandler$(root, args, context, READ_ROLES, 'query', 'VehicleStats', 'GetFleetStatistics').toPromise();
         }
     },
