@@ -165,22 +165,34 @@ class VehicleEventsProcessor {
      * @param {Array} freshEvents - Eventos frescos a procesar
      */
     async processFreshEvents$(freshEvents) {
-        // 5. Derivar campos y construir acumuladores
-        const batchStats = this.calculateBatchStats(freshEvents);
+        try {
+            ConsoleLogger.i(`VehicleEventsProcessor: Starting to process ${freshEvents.length} fresh events`);
+            
+            // 5. Derivar campos y construir acumuladores
+            const batchStats = this.calculateBatchStats(freshEvents);
+            ConsoleLogger.i(`VehicleEventsProcessor: Calculated batch stats: ${JSON.stringify(batchStats)}`);
 
-        // 6. Actualizar estadísticas en MongoDB
-        ConsoleLogger.i(`VehicleEventsProcessor: Updating fleet statistics with batch stats: ${JSON.stringify(batchStats)}`);
-        const updatedStats = await VehicleStatsDA.updateFleetStatistics$(batchStats).toPromise();
-        ConsoleLogger.i(`VehicleEventsProcessor: Fleet statistics updated: ${JSON.stringify(updatedStats)}`);
+            // 6. Actualizar estadísticas en MongoDB
+            ConsoleLogger.i(`VehicleEventsProcessor: Updating fleet statistics in MongoDB...`);
+            const updatedStats = await VehicleStatsDA.updateFleetStatistics$(batchStats).toPromise();
+            ConsoleLogger.i(`VehicleEventsProcessor: Fleet statistics updated in MongoDB: ${JSON.stringify(updatedStats)}`);
 
-        // 7. Insertar aids procesados
-        const freshAids = freshEvents.map(event => event.aid);
-        await VehicleStatsDA.insertProcessedAids$(freshAids).toPromise();
+            // 7. Insertar aids procesados
+            const freshAids = freshEvents.map(event => event.aid);
+            ConsoleLogger.i(`VehicleEventsProcessor: Inserting ${freshAids.length} processed aids...`);
+            await VehicleStatsDA.insertProcessedAids$(freshAids).toPromise();
+            ConsoleLogger.i(`VehicleEventsProcessor: Processed aids inserted successfully`);
 
-        // 8. Notificar por WebSocket
-        await this.notifyWebSocket$(updatedStats);
+            // 8. Notificar por WebSocket
+            ConsoleLogger.i(`VehicleEventsProcessor: Sending WebSocket notification...`);
+            await this.notifyWebSocket$(updatedStats);
 
-        ConsoleLogger.i(`VehicleEventsProcessor: Successfully processed ${freshEvents.length} events`);
+            ConsoleLogger.i(`VehicleEventsProcessor: Successfully processed ${freshEvents.length} events`);
+        } catch (error) {
+            ConsoleLogger.e(`VehicleEventsProcessor: Error processing fresh events: ${error.message}`);
+            ConsoleLogger.e(`VehicleEventsProcessor: Error stack: ${error.stack}`);
+            throw error;
+        }
     }
 
     /**
@@ -189,6 +201,8 @@ class VehicleEventsProcessor {
      * @returns {Object} Estadísticas del lote
      */
     calculateBatchStats(events) {
+        ConsoleLogger.i(`VehicleEventsProcessor: Calculating stats for ${events.length} events`);
+        
         const stats = {
             totalVehicles: events.length,
             vehiclesByType: {},
