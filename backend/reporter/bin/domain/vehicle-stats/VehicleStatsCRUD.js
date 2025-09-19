@@ -152,9 +152,15 @@ class VehicleStatsCRUD {
    * @param {*} args args
    */
   GetFleetStatistics$({ args }, authToken) {
+    ConsoleLogger.i(`VehicleStatsCRUD: GetFleetStatistics$ called`);
     return VehicleStatsDA.GetFleetStatistics$().pipe(
+      tap(rawResponse => ConsoleLogger.i(`VehicleStatsCRUD: Raw response from DA: ${JSON.stringify(rawResponse)}`)),
       mergeMap(rawResponse => CqrsResponseHelper.buildSuccessResponse$(rawResponse)),
-      catchError(err => iif(() => err.name === 'MongoTimeoutError', throwError(err), CqrsResponseHelper.handleError$(err)))
+      tap(response => ConsoleLogger.i(`VehicleStatsCRUD: CQRS response: ${JSON.stringify(response)}`)),
+      catchError(err => {
+        ConsoleLogger.e(`VehicleStatsCRUD: Error in GetFleetStatistics$: ${err.message}`);
+        return iif(() => err.name === 'MongoTimeoutError', throwError(err), CqrsResponseHelper.handleError$(err));
+      })
     );
   }
 
