@@ -73,11 +73,16 @@ class VehicleEventsProcessor {
             )
             .subscribe(
                 event => {
+                    // Extraer el envelope correcto de la estructura MQTT
                     const envelope = event && event.data ? event.data : event;
                     if (!envelope) { return; }
+                    
+                    // Si no tiene aid, generarlo desde los datos del vehículo
                     if (!envelope.aid && envelope.data) {
                         envelope.aid = this.generateAidFromVehicleData(envelope.data);
                     }
+                    
+                    ConsoleLogger.i(`VehicleEventsProcessor: Processing envelope: ${JSON.stringify(envelope)}`);
                     this.events$.next(envelope);
                 },
                 error => ConsoleLogger.e('VehicleEventsProcessor: Error in MQTT message processing', error),
@@ -191,9 +196,13 @@ class VehicleEventsProcessor {
 
         events.forEach(event => {
             const { data } = event;
-            if (!data) return;
+            if (!data) {
+                ConsoleLogger.w(`VehicleEventsProcessor: Event without data: ${JSON.stringify(event)}`);
+                return;
+            }
 
             const { type, powerSource, hp, year, topSpeed } = data;
+            ConsoleLogger.i(`VehicleEventsProcessor: Processing vehicle - type: ${type}, hp: ${hp}, year: ${year}, topSpeed: ${topSpeed}`);
 
             // Vehículos por tipo
             if (type) {
