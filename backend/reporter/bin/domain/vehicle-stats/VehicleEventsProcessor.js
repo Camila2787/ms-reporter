@@ -73,13 +73,18 @@ class VehicleEventsProcessor {
             )
             .subscribe(
                 event => {
-                    // Extraer el envelope correcto de la estructura MQTT
+                    // El evento MQTT tiene esta estructura:
+                    // { id, type: "VehicleGenerated", data: { at, et, aid, timestamp, data: {...} } }
                     const envelope = event && event.data ? event.data : event;
-                    if (!envelope) { return; }
+                    if (!envelope) { 
+                        ConsoleLogger.w(`VehicleEventsProcessor: No envelope found in event: ${JSON.stringify(event)}`);
+                        return; 
+                    }
                     
-                    // Si no tiene aid, generarlo desde los datos del vehículo
-                    if (!envelope.aid && envelope.data) {
-                        envelope.aid = this.generateAidFromVehicleData(envelope.data);
+                    // Verificar que tenga la estructura esperada
+                    if (!envelope.aid || !envelope.data) {
+                        ConsoleLogger.w(`VehicleEventsProcessor: Invalid envelope structure: ${JSON.stringify(envelope)}`);
+                        return;
                     }
                     
                     ConsoleLogger.i(`VehicleEventsProcessor: Processing envelope: ${JSON.stringify(envelope)}`);
@@ -151,6 +156,7 @@ class VehicleEventsProcessor {
         ConsoleLogger.i(`VehicleEventsProcessor: Processing ${freshEvents.length} fresh events out of ${batch.length} total`);
 
         // 4. Procesar eventos frescos
+        ConsoleLogger.i(`VehicleEventsProcessor: About to process ${freshEvents.length} fresh events`);
         await this.processFreshEvents$(freshEvents);
     }
 
@@ -163,7 +169,9 @@ class VehicleEventsProcessor {
         const batchStats = this.calculateBatchStats(freshEvents);
 
         // 6. Actualizar estadísticas en MongoDB
+        ConsoleLogger.i(`VehicleEventsProcessor: Updating fleet statistics with batch stats: ${JSON.stringify(batchStats)}`);
         const updatedStats = await VehicleStatsDA.updateFleetStatistics$(batchStats).toPromise();
+        ConsoleLogger.i(`VehicleEventsProcessor: Fleet statistics updated: ${JSON.stringify(updatedStats)}`);
 
         // 7. Insertar aids procesados
         const freshAids = freshEvents.map(event => event.aid);
