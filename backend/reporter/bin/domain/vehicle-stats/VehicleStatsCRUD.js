@@ -17,7 +17,7 @@ const VehicleStatsDA = require("./data-access/VehicleStatsDA");
 const READ_ROLES = ["VEHICLE_STATS_READ"];
 const WRITE_ROLES = ["VEHICLE_STATS_WRITE"];
 const REQUIRED_ATTRIBUTES = [];
-const MATERIALIZED_VIEW_TOPIC = "reporter-ui-gateway-materialized-view-updates";
+const MATERIALIZED_VIEW_TOPIC = "emi-gateway-materialized-view-updates";
 
 /**
  * Singleton instance

@@ -278,7 +278,7 @@ class VehicleEventsProcessor {
         try {
             // Enviar notificación por broker para WebSocket
             await this.broker.send$(
-                'reporter-ui-gateway-materialized-view-updates',
+                'emi-gateway-materialized-view-updates',
                 'FleetStatisticsUpdated',
                 stats
             ).toPromise();
