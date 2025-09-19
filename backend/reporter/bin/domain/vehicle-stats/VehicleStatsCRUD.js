@@ -2,7 +2,7 @@
 
 const uuidv4 = require("uuid/v4");
 const { of, forkJoin, from, iif, throwError } = require("rxjs");
-const { mergeMap, catchError, map, toArray, pluck } = require('rxjs/operators');
+const { mergeMap, catchError, map, toArray, pluck, tap } = require('rxjs/operators');
 
 const Event = require("@nebulae/event-store").Event;
 const { CqrsResponseHelper } = require('@nebulae/backend-node-tools').cqrs;
