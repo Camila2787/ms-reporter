@@ -5,7 +5,7 @@ const { map, mapTo, tap } = require("rxjs/operators");
 const { of, Observable, defer } = require("rxjs");
 
 const { CustomError } = require("@nebulae/backend-node-tools").error;
-const { ConsoleLogger } = require("@nebulae/backend-node-tools").logger;
+const { ConsoleLogger } = require("@nebulae/backend-node-tools").log;
 
 const CollectionName = 'VehicleStats';
 
