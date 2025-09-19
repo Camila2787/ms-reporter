@@ -13,7 +13,7 @@ import {
     LinearProgress,
     Divider
 } from '@material-ui/core';
-import { GetFleetStatistics, FleetStatisticsUpdated } from '../gql/FleetStatisticsNew';
+import { GetFleetStatistics, FleetStatisticsUpdated } from '../gql/FleetStatistics';
 import reducer from '../store/reducers';
 
 

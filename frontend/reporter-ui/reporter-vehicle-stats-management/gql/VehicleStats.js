@@ -58,6 +58,79 @@ export const ReporterUpdateVehicleStats = (variables) => ({
     variables
 })
 
+export const GetFleetStatistics = () => ({
+    query: gql`
+        query GetFleetStatistics {
+            GetFleetStatistics {
+                _id
+                totalVehicles
+                vehiclesByType {
+                    SUV
+                    PickUp
+                    Sedan
+                }
+                vehiclesByDecade {
+                    decade1980s
+                    decade1990s
+                    decade2000s
+                    decade2010s
+                    decade2020s
+                }
+                vehiclesBySpeedClass {
+                    Lento
+                    Normal
+                    Rapido
+                }
+                hpStats { 
+                    min 
+                    max 
+                    sum 
+                    count 
+                    avg 
+                }
+                lastUpdated
+            }
+        }
+    `,
+    fetchPolicy: 'network-only'
+});
+
+export const FleetStatisticsUpdated = () => ({
+    query: gql`
+        subscription FleetStatisticsUpdated {
+            FleetStatisticsUpdated {
+                _id
+                totalVehicles
+                vehiclesByType {
+                    SUV
+                    PickUp
+                    Sedan
+                }
+                vehiclesByDecade {
+                    decade1980s
+                    decade1990s
+                    decade2000s
+                    decade2010s
+                    decade2020s
+                }
+                vehiclesBySpeedClass {
+                    Lento
+                    Normal
+                    Rapido
+                }
+                hpStats { 
+                    min 
+                    max 
+                    sum 
+                    count 
+                    avg 
+                }
+                lastUpdated
+            }
+        }
+    `
+});
+
 export const onReporterVehicleStatsModified = (variables) => ([
     gql`subscription onReporterVehicleStatsModified($id:ID!){
             ReporterVehicleStatsModified(id:$id){    
