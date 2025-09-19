@@ -182,14 +182,8 @@ class VehicleEventsProcessor {
             // 6. Actualizar estadísticas en MongoDB
             ConsoleLogger.i(`VehicleEventsProcessor: Updating fleet statistics in MongoDB...`);
             ConsoleLogger.i(`VehicleEventsProcessor: Batch stats to update: ${JSON.stringify(batchStats)}`);
-            try {
-                const updatedStats = await VehicleStatsDA.updateFleetStatistics$(batchStats).toPromise();
-                ConsoleLogger.i(`VehicleEventsProcessor: Fleet statistics updated in MongoDB: ${JSON.stringify(updatedStats)}`);
-            } catch (error) {
-                ConsoleLogger.e(`VehicleEventsProcessor: Error updating MongoDB: ${error.message}`);
-                ConsoleLogger.e(`VehicleEventsProcessor: MongoDB error stack: ${error.stack}`);
-                throw error;
-            }
+            const updatedStats = await VehicleStatsDA.updateFleetStatistics$(batchStats).toPromise();
+            ConsoleLogger.i(`VehicleEventsProcessor: Fleet statistics updated in MongoDB: ${JSON.stringify(updatedStats)}`);
 
             // 7. Insertar aids procesados
             const freshAids = freshEvents.map(event => event.aid);
