@@ -157,7 +157,13 @@ class VehicleEventsProcessor {
 
         // 4. Procesar eventos frescos
         ConsoleLogger.i(`VehicleEventsProcessor: About to process ${freshEvents.length} fresh events`);
-        await this.processFreshEvents$(freshEvents);
+        try {
+            await this.processFreshEvents$(freshEvents);
+            ConsoleLogger.i(`VehicleEventsProcessor: Successfully completed processFreshEvents$`);
+        } catch (error) {
+            ConsoleLogger.e(`VehicleEventsProcessor: Error in processFreshEvents$: ${error.message}`);
+            ConsoleLogger.e(`VehicleEventsProcessor: Error stack: ${error.stack}`);
+        }
     }
 
     /**
@@ -165,10 +171,11 @@ class VehicleEventsProcessor {
      * @param {Array} freshEvents - Eventos frescos a procesar
      */
     async processFreshEvents$(freshEvents) {
+        ConsoleLogger.i(`VehicleEventsProcessor: Starting to process ${freshEvents.length} fresh events`);
+        
         try {
-            ConsoleLogger.i(`VehicleEventsProcessor: Starting to process ${freshEvents.length} fresh events`);
-            
             // 5. Derivar campos y construir acumuladores
+            ConsoleLogger.i(`VehicleEventsProcessor: Calculating batch stats...`);
             const batchStats = this.calculateBatchStats(freshEvents);
             ConsoleLogger.i(`VehicleEventsProcessor: Calculated batch stats: ${JSON.stringify(batchStats)}`);
 
