@@ -304,7 +304,7 @@ class VehicleStatsDA {
    * Gets current fleet statistics
    * @returns {Observable} Observable with fleet statistics
    */
-  static getFleetStatistics$() {
+  static GetFleetStatistics$() {
     const collection = mongoDB.db.collection('fleet_statistics');
     
     return defer(() => collection.findOne({ _id: 'real_time_fleet_stats' }))
