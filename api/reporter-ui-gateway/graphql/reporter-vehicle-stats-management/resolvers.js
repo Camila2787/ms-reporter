@@ -45,7 +45,6 @@ function getResponseFromBackEnd$(response) {
  * @param {number} timeout timeout for query or mutation in milliseconds
  */
 function sendToBackEndHandler$(root, OperationArguments, context, requiredRoles, operationType, aggregateName, methodName, timeout = 2000) {
-    console.log(`API Gateway: sendToBackEndHandler$ called for ${methodName}`);
     return RoleValidator.checkPermissions$(
         context.authToken.realm_access.roles,
         CONTEXT_NAME,
@@ -55,23 +54,16 @@ function sendToBackEndHandler$(root, OperationArguments, context, requiredRoles,
         requiredRoles
     )
         .pipe(
-            mergeMap(() => {
-                console.log(`API Gateway: Sending message to broker for ${methodName}`);
-                return broker.forwardAndGetReply$(
+            mergeMap(() =>
+                broker.forwardAndGetReply$(
                     aggregateName,
                     `reporter-uigateway.graphql.${operationType}.${methodName}`,
                     { root, args: OperationArguments, jwt: context.encodedToken },
                     timeout
-                );
-            }),
-            catchError(err => {
-                console.log(`API Gateway: Error in ${methodName}:`, err.message);
-                return handleError$(err, methodName);
-            }),
-            mergeMap(response => {
-                console.log(`API Gateway: Response from backend for ${methodName}:`, JSON.stringify(response));
-                return getResponseFromBackEnd$(response);
-            })
+                )
+            ),
+            catchError(err => handleError$(err, methodName)),
+            mergeMap(response => getResponseFromBackEnd$(response))
         )
 }
 
@@ -87,8 +79,6 @@ module.exports = {
             return sendToBackEndHandler$(root, args, context, READ_ROLES, 'query', 'VehicleStats', 'ReporterVehicleStats').toPromise();
         },
         GetFleetStatistics(root, args, context) {
-            console.log('API Gateway: GetFleetStatistics called with args:', JSON.stringify(args));
-            console.log('API Gateway: GetFleetStatistics context:', JSON.stringify(context));
             return sendToBackEndHandler$(root, args, context, READ_ROLES, 'query', 'VehicleStats', 'GetFleetStatistics').toPromise();
         }
     },

@@ -2,7 +2,7 @@
 
 const uuidv4 = require("uuid/v4");
 const { of, forkJoin, from, iif, throwError } = require("rxjs");
-const { mergeMap, catchError, map, toArray, pluck, tap } = require('rxjs/operators');
+const { mergeMap, catchError, map, toArray, pluck } = require('rxjs/operators');
 
 const Event = require("@nebulae/event-store").Event;
 const { CqrsResponseHelper } = require('@nebulae/backend-node-tools').cqrs;
@@ -38,7 +38,6 @@ class VehicleStatsCRUD {
    *  { "CreateUser" : { "somegateway.someprotocol.mutation.CreateUser" : {fn: createUser$, instance: classInstance } } }
    */
   generateRequestProcessorMap() {
-    ConsoleLogger.i(`VehicleStatsCRUD: generateRequestProcessorMap called`);
     return {
       'VehicleStats': {
         "reporter-uigateway.graphql.query.ReporterVehicleStatsListing": { fn: instance.getReporterVehicleStatsListing$, instance, jwtValidation: { roles: READ_ROLES, attributes: REQUIRED_ATTRIBUTES } },
@@ -153,19 +152,9 @@ class VehicleStatsCRUD {
    * @param {*} args args
    */
   GetFleetStatistics$({ args }, authToken) {
-    ConsoleLogger.i(`VehicleStatsCRUD: GetFleetStatistics$ called with args: ${JSON.stringify(args)}`);
-    ConsoleLogger.i(`VehicleStatsCRUD: GetFleetStatistics$ called with authToken: ${JSON.stringify(authToken)}`);
-    
     return VehicleStatsDA.GetFleetStatistics$().pipe(
-      tap(rawResponse => ConsoleLogger.i(`VehicleStatsCRUD: Raw response from DA: ${JSON.stringify(rawResponse)}`)),
-      mergeMap(rawResponse => {
-        ConsoleLogger.i(`VehicleStatsCRUD: About to build CQRS response for: ${JSON.stringify(rawResponse)}`);
-        return CqrsResponseHelper.buildSuccessResponse$(rawResponse);
-      }),
-      tap(response => ConsoleLogger.i(`VehicleStatsCRUD: CQRS response: ${JSON.stringify(response)}`)),
+      mergeMap(rawResponse => CqrsResponseHelper.buildSuccessResponse$(rawResponse)),
       catchError(err => {
-        ConsoleLogger.e(`VehicleStatsCRUD: Error in GetFleetStatistics$: ${err.message}`);
-        ConsoleLogger.e(`VehicleStatsCRUD: Error stack: ${err.stack}`);
         return iif(() => err.name === 'MongoTimeoutError', throwError(err), CqrsResponseHelper.handleError$(err));
       })
     );

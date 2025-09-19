@@ -1,7 +1,7 @@
 "use strict";
 
 let mongoDB = undefined;
-const { map, mapTo, tap } = require("rxjs/operators");
+const { map, mapTo } = require("rxjs/operators");
 const { of, Observable, defer } = require("rxjs");
 
 const { CustomError } = require("@nebulae/backend-node-tools").error;
@@ -307,14 +307,11 @@ class VehicleStatsDA {
    */
   static GetFleetStatistics$() {
     const collection = mongoDB.db.collection('fleet_statistics');
-    ConsoleLogger.i(`VehicleStatsDA: GetFleetStatistics$ called`);
     
     return defer(() => collection.findOne({ _id: 'real_time_fleet_stats' }))
       .pipe(
-        tap(rawStats => ConsoleLogger.i(`VehicleStatsDA: Raw stats from MongoDB: ${JSON.stringify(rawStats)}`)),
         map(stats => {
           if (!stats) {
-            ConsoleLogger.w(`VehicleStatsDA: No stats found in MongoDB, returning default`);
             return {
               _id: 'real_time_fleet_stats',
               totalVehicles: 0,
@@ -341,7 +338,6 @@ class VehicleStatsDA {
             stats.vehiclesByDecade = mappedDecades;
           }
           
-          ConsoleLogger.i(`VehicleStatsDA: Processed stats: ${JSON.stringify(stats)}`);
           return stats;
         })
       );
